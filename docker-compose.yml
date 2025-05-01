@@ -1,0 +1,80 @@
+# version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16.8-alpine3.21
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mydatabase
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  pgadmin:
+    image: dpage/pgadmin4:9.2.0
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: password
+    ports:
+      - "5050:80"
+    volumes:
+      - ./pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - app-network
+
+  valkey:
+    image: valkey/valkey:8.1.1-alpine3.21
+    command: >
+      valkey-server --requirepass myvalkeypassword
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./valkey_data:/data
+    networks:
+      - app-network
+
+  # redis:
+  #   image: redis:7.4.3-alpine3.21
+  #   command: redis-server --requirepass myredispassword
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - ./redis_data:/data
+  #   networks:
+  #     - app-network
+
+  redisinsight:
+    image: redis/redisinsight:2.68.0
+    ports:
+      - "5540:5540"
+    depends_on:
+      - valkey   # Uncomment this line if using Valkey instead of Redis
+    # depends_on:
+    #   - redis   # Uncomment this line if using Redis instead of Valkey
+    volumes:
+      - ./redisinsight_data:/data
+    networks:
+      - app-network
+
+  nodejs:
+    image: node:22.15.0-alpine3.21
+    working_dir: /app
+    volumes:
+      - ./app:/app
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./app/.env
+    command: ["npm", "start"]
+    networks:
+      - app-network
+      
+networks:
+  app-network:
+    driver: bridge
